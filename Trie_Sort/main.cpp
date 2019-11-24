@@ -5,7 +5,7 @@
 using namespace std;
 
 struct Bin {
-	short bin;
+	uint8_t bin;
 
 	static const int size = 2;
 

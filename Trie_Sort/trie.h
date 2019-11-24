@@ -14,6 +14,8 @@
 */
 
 #pragma once
+#include <vector>
+using namespace std;
 
 // Trie-Node class template
 // Char: dict keyword (e.g. a-zA-Z0-9, 0/1, etc.)
@@ -40,25 +42,27 @@ public:
 
 	bool empty() { return info == nullptr && next == nullptr; }
 
-	void insert(Char* word, Info* iinfo) { // word needs to end up with nullptr as a sign
-		if (word == nullptr) {
+	void insert(Char** word, Info* iinfo) { // word needs to end up with nullptr as a sign
+		if (word[0] == nullptr) {
 			info = iinfo; // will overwrite previous info
 			return;
 		}
 		if (next == nullptr) next = new Trie[size()];
-		next[word[0].seq()].insert(&word[1], iinfo);
+		next[word[0]->seq()].insert(&word[1], iinfo);
 	}
 
-	// @return
-	// 0 - matched and deleted
-	// 1 - this node is clear
-	// -1 - not matched due to non-null rinfo with null info
-	// -2 - not matched due to unequal rinfo and info
-	// -3 - ERROR not matched due to no children
-	// -4 - recursively not matched
-	int remove(Char* word, Info* rinfo = nullptr) { // if rinfo == nullptr, ignore it
+	/**
+	 * @return
+	 * 0 - matched and deleted
+	 * 1 - this node is clear
+	 * -1 - not matched due to non-null rinfo with null info
+	 * -2 - not matched due to unequal rinfo and info
+	 * -3 - ERROR not matched due to no children
+	 * -4 - recursively not matched
+	*/
+	int remove(Char** word, Info* rinfo = nullptr) { // if rinfo == nullptr, ignore it
 		if (next == nullptr) return -3;
-		if (word == nullptr) {
+		if (word[0] == nullptr) {
 			if (rinfo != nullptr && info != nullptr && *rinfo == *info) {
 				info = nullptr;
 				if (next == nullptr) return 1;
@@ -71,7 +75,7 @@ public:
 			else if (info == nullptr) return -1;
 			else return -2;
 		}
-		int ans = next[word[0].seq()].remove(&word[1], rinfo);
+		int ans = next[word[0]->seq()].remove(&word[1], rinfo);
 		if (ans == 1) {
 			for (int i = 0; i < size(); i++) {
 				if (!next[i].empty()) return 0;
@@ -85,10 +89,46 @@ public:
 		else return -4;
 	}
 
-	const Info* lookup(Char* word) {
-		if (word[0] == nullptr) return info;
-		return word[1].lookup(&word[1]);
+	/**
+	 * @param ans collect all matched info
+	 *     [NOTE] vec [long ... short] match only when word totally matched
+	 * @return true if this call found ans, false if not
+	 */
+	bool lookup(Char** word, vector<const Info*>& ans) {
+		if (word[0] == nullptr) {
+			if (info != nullptr) {
+				ans.push_back(info);
+				return true;
+			}
+			else return false;
+		}
+		if (next == nullptr) return false;
+		if (next[word[0]->seq()].lookup(&word[1], ans)) {
+			if (info != nullptr) ans.push_back(info);
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @param ans collect all prefix-matched info
+	 *     [NOTE] vec [short ... long] match
+	 * @return true if this call found ans, false if not
+	 */
+	bool lookup_pre(Char** word, vector<const Info*>& ans) {
+		if (word[0] == nullptr) {
+			if (info != nullptr) {
+				ans.push_back(info);
+				return true;
+			}
+			else return false;
+		}
+		if (next == nullptr) return false;
+		
+		if (info != nullptr) {
+			ans.push_back(info);
+			return true;
+		}
+		return next[word[0]->seq()].lookup_pre(&word[1], ans);
 	}
 };
-
-
