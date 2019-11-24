@@ -15,30 +15,38 @@
 
 #pragma once
 #include <vector>
+#include <iostream>
 using namespace std;
 
 // Trie-Node class template
 // Char: dict keyword (e.g. a-zA-Z0-9, 0/1, etc.)
-// Info: node info, may be use to store the entire word or other things (e.g. route info)
 //     Char needs:
 //         method int seq()   - to get sequence of this Char
 //         static member size - to get number of kinds of Char
 //         operator==         - to compare Char sequence
+// Info: node info, may be use to store the entire word or other things (e.g. route info)
+//     Info needs:
+//         operator==         - to compare whether two Info are identical
+//         method of copy     - to give Info to node
+// [NOTE]  operator<<         - DEBUG only: output stream
 // WARN: the tree does NOT maintain Info!
 
 template <class Char, class Info>
 class Trie {
 
-	Info* info; // also marks that there is a word ending up here
+	Info* info = nullptr; // also marks that there is a word ending up here
 	Trie(const Trie&) = delete;
 	Trie& operator=(const Trie& b) = delete;
-	Trie* next;
+	Trie* next = nullptr;
 
 public:
 
 	inline static const int size() { return Char::size; }
 
-	Trie(Info* i = nullptr) { info = i; }
+	Trie(Info* i = nullptr) {
+		info = i;
+		next = nullptr;
+	}
 
 	bool empty() { return info == nullptr && next == nullptr; }
 
@@ -130,5 +138,29 @@ public:
 			return true;
 		}
 		return next[word[0]->seq()].lookup_pre(&word[1], ans);
+	}
+
+	// DEBUG only: needs Info overload operator<<
+	void print(int indent) {
+		for (int i = 0; i < indent; i++) cout << "  ";
+		cout << "[NODE]" << endl;
+		if (info != nullptr) {
+			for (int i = 0; i < indent; i++) cout << "  ";
+			cout << "Info: " << *info << endl;
+		}
+		for (int i = 0; i < indent; i++) cout << "  ";
+		if (next != nullptr) {
+			cout << "Children: " << endl;
+			for (int i = 0; i < size(); i++) {
+				if (!next[i].empty()) {
+					for (int i = 0; i < indent; i++) cout << "  ";
+					cout << "#" << i << endl;
+					next[i].print(indent + 1);
+				}
+			}
+		}
+		else {
+			cout << "Children: <empty>" << endl;
+		}
 	}
 };
