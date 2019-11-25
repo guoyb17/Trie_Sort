@@ -19,17 +19,19 @@
 using namespace std;
 
 // Trie-Node class template
-// Char: dict keyword (e.g. a-zA-Z0-9, 0/1, etc.)
+// Char: dict keyword (e.g. a-zA-Z0-9 for dictionary, 0/1 for IP address, etc.)
 //     Char needs:
-//         method int seq()   - to get sequence of this Char
-//         static member size - to get number of kinds of Char
-//         operator==         - to compare Char sequence
+//     *   method int seq()   - to get sequence of this Char
+//     *   static member size - to get number of kinds of Char
+//     *   operator==         - to compare Char sequence
 // Info: node info, may be use to store the entire word or other things (e.g. route info)
 //     Info needs:
-//         operator==         - to compare whether two Info are identical
-//         method of copy     - to give Info to node
-// [NOTE]  operator<<         - DEBUG only: output stream
-// WARN: the tree does NOT maintain Info!
+//     *   operator==         - to compare whether two Info are identical
+//     *   method of copy     - to give Info to node
+//         operator<<         - DEBUG only: output stream
+// [WARN] The tree does NOT maintain Info!
+//        Make sure Info keeps valid while tree working!
+//        Also make sure memory managed properly outside the tree if necessary!
 
 template <class Char, class Info>
 class Trie {
@@ -52,7 +54,8 @@ public:
 
 	void insert(Char** word, Info* iinfo) { // word needs to end up with nullptr as a sign
 		if (word[0] == nullptr) {
-			info = iinfo; // will overwrite previous info
+			if (info == nullptr) info = new Info;
+			*info = *iinfo; // will overwrite previous info
 			return;
 		}
 		if (next == nullptr) next = new Trie[size()];
@@ -63,27 +66,23 @@ public:
 	 * @return
 	 * 0 - matched and deleted
 	 * 1 - this node is clear
-	 * -1 - not matched due to non-null rinfo with null info
-	 * -2 - not matched due to unequal rinfo and info
+	 * -1 - not matched due to null info
+	 * -2 - NOT IN USE
 	 * -3 - ERROR not matched due to no children
 	 * -4 - recursively not matched
 	*/
-	int remove(Char** word, Info* rinfo = nullptr) { // if rinfo == nullptr, ignore it
-		if (next == nullptr) return -3;
+	int remove(Char** word) {
 		if (word[0] == nullptr) {
-			if (rinfo != nullptr && info != nullptr && *rinfo == *info) {
+			if (info != nullptr) {
+				delete info;
 				info = nullptr;
 				if (next == nullptr) return 1;
 				else return 0;
 			}
-			else if (rinfo == nullptr) {
-				info = nullptr;
-				return 0;
-			}
-			else if (info == nullptr) return -1;
-			else return -2;
+			else return -1;
 		}
-		int ans = next[word[0]->seq()].remove(&word[1], rinfo);
+		if (next == nullptr) return -3;
+		int ans = next[word[0]->seq()].remove(&word[1]);
 		if (ans == 1) {
 			for (int i = 0; i < size(); i++) {
 				if (!next[i].empty()) return 0;
@@ -99,7 +98,7 @@ public:
 
 	/**
 	 * @param ans collect all matched info
-	 *     [NOTE] vec [long ... short] match only when word totally matched
+	 *     [NOTE] ans <- vec [long ... short] match ONLY WHEN word totally matched
 	 * @return true if this call found ans, false if not
 	 */
 	bool lookup(Char** word, vector<const Info*>& ans) {
@@ -120,7 +119,7 @@ public:
 
 	/**
 	 * @param ans collect all prefix-matched info
-	 *     [NOTE] vec [short ... long] match
+	 *     [NOTE] ans <- vec [short ... long] match; NO guarantee for total match!
 	 * @return true if this call found ans, false if not
 	 */
 	bool lookup_pre(Char** word, vector<const Info*>& ans) {
@@ -131,13 +130,12 @@ public:
 			}
 			else return false;
 		}
-		if (next == nullptr) return false;
 		
-		if (info != nullptr) {
-			ans.push_back(info);
-			return true;
-		}
-		return next[word[0]->seq()].lookup_pre(&word[1], ans);
+		bool tflag = true;
+		if (info != nullptr) ans.push_back(info);
+		else tflag = false;
+		if (next == nullptr) return tflag;
+		return next[word[0]->seq()].lookup_pre(&word[1], ans) || tflag;
 	}
 
 	// DEBUG only: needs Info overload operator<<
@@ -148,19 +146,14 @@ public:
 			for (int i = 0; i < indent; i++) cout << "  ";
 			cout << "Info: " << *info << endl;
 		}
-		for (int i = 0; i < indent; i++) cout << "  ";
 		if (next != nullptr) {
-			cout << "Children: " << endl;
 			for (int i = 0; i < size(); i++) {
 				if (!next[i].empty()) {
 					for (int i = 0; i < indent; i++) cout << "  ";
-					cout << "#" << i << endl;
+					cout << "Children #" << i << endl;
 					next[i].print(indent + 1);
 				}
 			}
-		}
-		else {
-			cout << "Children: <empty>" << endl;
 		}
 	}
 };
